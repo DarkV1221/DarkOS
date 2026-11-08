@@ -54,8 +54,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p iso-pieces
-          split --bytes=400000000 --numeric-suffixes=0 --suffix-length=2 \\
-            DarkOS-1.0-x86_64.iso iso-pieces/DarkOS-1.0-x86_64.iso.
+          split --bytes=400000000 --numeric-suffixes=0 --suffix-length=2 DarkOS-1.0-x86_64.iso iso-pieces/DarkOS-1.0-x86_64.iso.
           ls -lh iso-pieces/
           test "$(find iso-pieces -maxdepth 1 -type f | wc -l)" -eq 13
 

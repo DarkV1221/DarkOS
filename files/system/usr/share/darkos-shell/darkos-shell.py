@@ -17,7 +17,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Vte", "3.91")
-from gi.repository import Gdk, GLib, Gtk, Pango, Vte
+from gi.repository import Gdk, Gio, GLib, Gtk, Pango, Vte
 
 
 APP_ID = "com.darkos.DesktopShell"
@@ -115,7 +115,7 @@ popover contents { background: #24252a; border: 1px solid #3a3b42; }
 
 class DarkOSApplication(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
         self.window = None
         self.stack = None
         self.terminal = None

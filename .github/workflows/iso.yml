@@ -1,0 +1,62 @@
+name: DarkOS ISO
+
+on:
+  push:
+    branches:
+      - main
+      - darkos-1.0-desktop
+    paths:
+      - ".github/workflows/iso.yml"
+      - "recipes/**"
+      - "files/**"
+      - "modules/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-iso:
+    name: Build DarkOS 1.0 offline installer ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out DarkOS
+        uses: actions/checkout@v4
+
+      - name: Install pinned BlueBuild CLI
+        shell: bash
+        run: |
+          curl --fail --show-error --silent --location \
+            https://raw.githubusercontent.com/blue-build/cli/v0.9.41/install.sh \
+            --output /tmp/install-bluebuild.sh
+          bash /tmp/install-bluebuild.sh
+          bluebuild --version
+
+      - name: Build the x86_64 installer ISO
+        shell: bash
+        run: |
+          sudo bluebuild generate-iso \
+            --variant silverblue \
+            --iso-name DarkOS-1.0-x86_64.iso \
+            recipe recipes/recipe.yml
+
+      - name: Verify ISO and create SHA-256 checksum
+        shell: bash
+        run: |
+          test -s DarkOS-1.0-x86_64.iso
+          file DarkOS-1.0-x86_64.iso
+          sha256sum DarkOS-1.0-x86_64.iso > DarkOS-1.0-x86_64.iso.sha256
+          cat DarkOS-1.0-x86_64.iso.sha256
+
+      - name: Upload ISO and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-x86_64
+          path: |
+            DarkOS-1.0-x86_64.iso
+            DarkOS-1.0-x86_64.iso.sha256
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

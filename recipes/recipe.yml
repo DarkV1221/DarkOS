@@ -1,22 +1,21 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
-# image will be published to ghcr.io/<user>/<name>
-name: DarkOS
-# description will be included in the image's metadata
-description: This is my personal OS image.
+name: darkos
+description: DarkOS 1.0 — a Fedora Atomic desktop with the DarkOS full-screen shell.
 
-# the base image to build on top of (FROM) and the version tag to use
+# Keep the Universal Blue Silverblue base so DarkOS retains its GNOME session,
+# hardware support, and Atomic update model.
 base-image: ghcr.io/ublue-os/silverblue-main
-image-version: latest # You can pin to a specific version of Fedora as well
+image-version: latest
 
-# module configuration, executed in order
-# you can include multiple instances of the same module
 modules:
+  # Install the DarkOS shell, Bash configuration, and GNOME autostart entry.
   - type: files
     files:
       - source: system
-        destination: / # copies files/system/* (* means everything inside it) into your image's root folder /
+        destination: /
 
+  # Desktop shell dependencies. VTE embeds a real Bash terminal in DarkShell.
   - type: dnf
     repos:
       copr:
@@ -25,21 +24,26 @@ modules:
       packages:
         - micro
         - starship
+        - python3-gobject
+        - vte291-gtk4
     remove:
       packages:
-        # example: removing firefox (in favor of the flatpak)
-        # "firefox" is the main package, "firefox-langpacks" is a dependency
         - firefox
-        - firefox-langpacks # also remove firefox dependency (not required for all packages, this is a special case)
+        - firefox-langpacks
 
+  # Install the four requested apps for every user through the system Flathub
+  # remote. The module completes this setup during first boot.
   - type: default-flatpaks
     configurations:
-      - notify: true # Send notification after install/uninstall is finished (true/false)
+      - notify: true
         scope: system
-        # If no repo information is specified, Flathub will be used by default
-        install: # system flatpaks we want all users to have and not remove
+        install:
           - org.mozilla.firefox
+          - com.valvesoftware.Steam
+          - org.prismlauncher.PrismLauncher
+          - io.github.kolunmi.Bazaar
           - org.gnome.Loupe
-      - scope: user # Also add Flathub user repo, but no user packages
+      - scope: user
 
-  - type: signing # this sets up the proper policy & signing files for signed images to work fully
+  # Installs the cosign verification policy used by Atomic systems.
+  - type: signing

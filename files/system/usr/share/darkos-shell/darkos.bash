@@ -114,3 +114,5 @@ _darkos_update_prompt() {
 
 PROMPT_COMMAND="_darkos_update_prompt"
 _darkos_update_prompt
+printf '\033[31m%s\033[0m\n' '//DarkOS-Version-1.0\\'
+printf '%s\n\n' 'Welcome to DarkOS 1.0. Type Help to see DarkShell commands.'

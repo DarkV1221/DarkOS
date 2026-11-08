@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -126,6 +127,7 @@ class DarkOSApplication(Gtk.Application):
         self.sidebar_buttons = {}
         self.status_images = {}
         self.status_buttons = {}
+        self._status_refresh_running = False
 
     def do_activate(self):
         if self.window is None:
@@ -269,7 +271,17 @@ class DarkOSApplication(Gtk.Application):
             return ""
 
     def update_status(self):
-        # NetworkManager reports Wi-Fi power and active device state.
+        # Poll hardware/services in a worker so a slow command never freezes GTK.
+        if not self._status_refresh_running:
+            self._status_refresh_running = True
+            threading.Thread(
+                target=self.collect_status,
+                name="darkos-status",
+                daemon=True,
+            ).start()
+        return GLib.SOURCE_CONTINUE
+
+    def collect_status(self):
         wifi_power = self.command_output(
             ["nmcli", "-t", "-f", "WIFI", "general"]
         ).lower()
@@ -281,79 +293,85 @@ class DarkOSApplication(Gtk.Application):
             for row in wifi_devices.splitlines()
         )
         if wifi_power == "enabled" and wifi_connected:
-            wifi_icon, wifi_tip = "network-wireless-symbolic", "Wi-Fi: Connected"
+            wifi = ("network-wireless-symbolic", "Wi-Fi: Connected")
         elif wifi_power == "enabled":
-            wifi_icon, wifi_tip = "network-wireless-symbolic", "Wi-Fi: Enabled, not connected"
+            wifi = ("network-wireless-symbolic", "Wi-Fi: Enabled, not connected")
         elif wifi_power == "disabled":
-            wifi_icon, wifi_tip = "network-wireless-offline-symbolic", "Wi-Fi: Disabled"
+            wifi = ("network-wireless-offline-symbolic", "Wi-Fi: Disabled")
         else:
-            wifi_icon, wifi_tip = "network-wireless-symbolic", "Wi-Fi status unavailable"
-        self.status_images["wifi"].set_from_icon_name(wifi_icon)
-        self.status_buttons["wifi"].set_tooltip_text(wifi_tip)
+            wifi = ("network-wireless-symbolic", "Wi-Fi status unavailable")
 
-        # BlueZ's bluetoothctl reports the adapter's power state.
         bluetooth = self.command_output(["bluetoothctl", "show"]).lower()
         if "powered: yes" in bluetooth:
-            bt_icon, bt_tip = "bluetooth-active-symbolic", "Bluetooth: On"
+            bt = ("bluetooth-active-symbolic", "Bluetooth: On")
         elif "powered: no" in bluetooth:
-            bt_icon, bt_tip = "bluetooth-disabled-symbolic", "Bluetooth: Off"
+            bt = ("bluetooth-disabled-symbolic", "Bluetooth: Off")
         else:
-            bt_icon, bt_tip = "bluetooth-active-symbolic", "Bluetooth status unavailable"
-        self.status_images["bluetooth"].set_from_icon_name(bt_icon)
-        self.status_buttons["bluetooth"].set_tooltip_text(bt_tip)
+            bt = ("bluetooth-active-symbolic", "Bluetooth status unavailable")
 
-        # PipeWire's PulseAudio compatibility layer exposes mute and volume.
         mute = self.command_output(
             ["pactl", "get-sink-mute", "@DEFAULT_SINK@"]
         ).lower()
         volume = self.command_output(
             ["pactl", "get-sink-volume", "@DEFAULT_SINK@"]
         )
-        match = re.search(r"(\\d+)%", volume)
+        match = re.search(r"(\d+)%", volume)
         level = int(match.group(1)) if match else None
         if "yes" in mute:
-            sound_icon, sound_tip = "audio-volume-muted-symbolic", "Sound: Muted"
+            sound = ("audio-volume-muted-symbolic", "Sound: Muted")
         elif level is not None and level < 30:
-            sound_icon, sound_tip = "audio-volume-low-symbolic", f"Sound: {level}%"
+            sound = ("audio-volume-low-symbolic", f"Sound: {level}%")
         elif level is not None and level < 70:
-            sound_icon, sound_tip = "audio-volume-medium-symbolic", f"Sound: {level}%"
+            sound = ("audio-volume-medium-symbolic", f"Sound: {level}%")
         elif level is not None:
-            sound_icon, sound_tip = "audio-volume-high-symbolic", f"Sound: {level}%"
+            sound = ("audio-volume-high-symbolic", f"Sound: {level}%")
         else:
-            sound_icon, sound_tip = "audio-volume-high-symbolic", "Sound status unavailable"
-        self.status_images["volume"].set_from_icon_name(sound_icon)
-        self.status_buttons["volume"].set_tooltip_text(sound_tip)
+            sound = ("audio-volume-high-symbolic", "Sound status unavailable")
 
-        # Hide the battery indicator on desktops without a battery.
         devices = self.command_output(["upower", "-e"])
         battery_path = next(
             (line for line in devices.splitlines() if "/battery_" in line),
             None,
         )
-        battery_image = self.status_images["battery"]
-        battery_button = self.status_buttons["battery"]
-        battery_button.set_visible(bool(battery_path))
+        battery = None
         if battery_path:
             info = self.command_output(["upower", "-i", battery_path])
-            percentage_match = re.search(r"percentage:\\s*(\\d+)%", info, re.I)
-            state_match = re.search(r"state:\\s*(\\w+)", info, re.I)
+            percentage_match = re.search(r"percentage:\s*(\d+)%", info, re.I)
+            state_match = re.search(r"state:\s*(\w+)", info, re.I)
             percentage = int(percentage_match.group(1)) if percentage_match else None
             state = state_match.group(1).lower() if state_match else "unknown"
             if percentage is None:
-                battery_icon = "battery-full-symbolic"
-                battery_tip = "Battery status unavailable"
+                battery = ("battery-full-symbolic", "Battery status unavailable")
             else:
-                battery_icon = (
+                icon = (
                     "battery-caution-symbolic" if percentage <= 10 else
                     "battery-low-symbolic" if percentage <= 25 else
                     "battery-good-symbolic" if percentage <= 60 else
                     "battery-full-symbolic"
                 )
-                battery_tip = f"Battery: {percentage}% ({state})"
-            battery_image.set_from_icon_name(battery_icon)
-            battery_button.set_tooltip_text(battery_tip)
+                battery = (icon, f"Battery: {percentage}% ({state})")
 
-        return GLib.SOURCE_CONTINUE
+        GLib.idle_add(
+            self.apply_status,
+            {"wifi": wifi, "bluetooth": bt, "volume": sound, "battery": battery},
+        )
+
+    def apply_status(self, statuses):
+        for key in ("wifi", "bluetooth", "volume"):
+            icon_name, tooltip = statuses[key]
+            self.status_images[key].set_from_icon_name(icon_name)
+            self.status_buttons[key].set_tooltip_text(tooltip)
+
+        battery = statuses["battery"]
+        button = self.status_buttons["battery"]
+        button.set_visible(battery is not None)
+        if battery is not None:
+            icon_name, tooltip = battery
+            self.status_images["battery"].set_from_icon_name(icon_name)
+            button.set_tooltip_text(tooltip)
+
+        self._status_refresh_running = False
+        return GLib.SOURCE_REMOVE
 
     def build_power_popover(self, anchor):
         popover = Gtk.Popover()

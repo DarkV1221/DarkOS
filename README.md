@@ -55,9 +55,23 @@ Every push and pull request runs a Python syntax check, a Bash syntax check, and
 
 The image is signed when the GitHub Actions repository secret `SIGNING_SECRET` contains the Cosign private key matching the repository's `cosign.pub`. Until that secret is configured, CI uses BlueBuild's `--no-sign` option and publishes an **unsigned development image**. Do not treat an unsigned development image as verified. See the [BlueBuild Cosign setup guide](https://blue-build.org/how-to/cosign/) before enabling signed releases.
 
-## ISO
+## Installer ISO
 
-An installable ISO has not been generated yet. Once the container image builds successfully, the next release step is to generate and test an ISO using the [BlueBuild ISO guide](https://blue-build.org/how-to/generate-iso/). The ISO should be tested in a virtual machine before anyone installs it on physical hardware.
+The **DarkOS ISO** GitHub Actions workflow builds a complete x86_64 installer ISO from `recipes/recipe.yml`. It uses BlueBuild's ISO generator with the Silverblue installer variant, matching DarkOS's GNOME-based Silverblue foundation. The locally built DarkOS image is bundled into the installer, so the OS payload does not need to be downloaded from GHCR during installation.
+
+When the workflow succeeds:
+
+1. Open the repository's [Actions page](https://github.com/DarkV1221/DarkOS/actions/workflows/iso.yml).
+2. Open the latest successful **DarkOS ISO** run.
+3. Download the **DarkOS-1.0-x86_64** artifact. It contains the ISO and its SHA-256 checksum.
+
+Artifacts are retained for 90 days, so download and keep a copy somewhere safe.
+
+This is an installer ISO, not a live desktop session. It installs DarkOS onto a selected drive. The first boot downloads the configured system Flatpaks (Firefox, Steam, Prism Launcher, and Bazaar), so an internet connection is needed to finish setting up those applications. The current ISO target is x86_64 PCs.
+
+The installer has not yet been validated on physical hardware. Test it in a virtual machine first. Installing an operating system can erase data on the selected drive; back up important files and get help from a trusted adult before installing it on a real computer.
+
+The ISO workflow runs when the recipe, system files, modules, or ISO workflow change on `main` or `darkos-1.0-desktop`. It can also be started manually from GitHub Actions after the workflow is present on the default branch.
 
 ## Base image
 

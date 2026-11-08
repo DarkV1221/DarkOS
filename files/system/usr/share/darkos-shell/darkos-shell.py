@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime
-
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -125,6 +124,8 @@ class DarkOSApplication(Gtk.Application):
         self.clock_label = None
         self.tab_buttons = {}
         self.sidebar_buttons = {}
+        self.status_images = {}
+        self.status_buttons = {}
 
     def do_activate(self):
         if self.window is None:
@@ -177,7 +178,9 @@ class DarkOSApplication(Gtk.Application):
         self.show_tab("DarkShell")
         self.change_mode("RED")
         self.update_clock()
+        self.update_status()
         GLib.timeout_add_seconds(30, self.update_clock)
+        GLib.timeout_add_seconds(20, self.update_status)
 
     def install_css(self):
         provider = Gtk.CssProvider()
@@ -216,22 +219,16 @@ class DarkOSApplication(Gtk.Application):
         spacer.set_hexpand(True)
         header.append(spacer)
 
-        header.append(self.icon_button(
-            "network-wireless-symbolic", "Wi-Fi settings",
-            lambda *_: self.open_control_center("wifi")
-        ))
-        header.append(self.icon_button(
-            "bluetooth-active-symbolic", "Bluetooth settings",
-            lambda *_: self.open_control_center("bluetooth")
-        ))
-        header.append(self.icon_button(
-            "audio-volume-high-symbolic", "Sound settings",
-            lambda *_: self.open_control_center("sound")
-        ))
-        header.append(self.icon_button(
-            "battery-level-100-symbolic", "Power and battery",
-            lambda *_: self.open_control_center("power")
-        ))
+        for key, icon_name, tooltip, panel in [
+            ("wifi", "network-wireless-symbolic", "Wi-Fi settings", "wifi"),
+            ("bluetooth", "bluetooth-active-symbolic", "Bluetooth settings", "bluetooth"),
+            ("volume", "audio-volume-high-symbolic", "Sound settings", "sound"),
+            ("battery", "battery-full-symbolic", "Power and battery", "power"),
+        ]:
+            button, image = self.status_icon_button(
+                key, icon_name, tooltip, panel
+            )
+            header.append(button)
 
         self.clock_label = self.label("--:--", "darkos-muted")
         header.append(self.clock_label)
@@ -242,6 +239,121 @@ class DarkOSApplication(Gtk.Application):
         header.append(power_button)
         self.build_power_popover(power_button)
         return header
+
+    def status_icon_button(self, key, icon_name, tooltip, panel):
+        image = Gtk.Image.new_from_icon_name(icon_name)
+        button = Gtk.Button()
+        button.set_child(image)
+        button.set_tooltip_text(tooltip)
+        button.add_css_class("darkos-status-button")
+        button.connect(
+            "clicked",
+            lambda *_args, target=panel: self.open_control_center(target)
+        )
+        self.status_images[key] = image
+        self.status_buttons[key] = button
+        return button, image
+
+    @staticmethod
+    def command_output(command, timeout=1.5):
+        try:
+            result = subprocess.run(
+                command,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+
+    def update_status(self):
+        # NetworkManager reports Wi-Fi power and active device state.
+        wifi_power = self.command_output(
+            ["nmcli", "-t", "-f", "WIFI", "general"]
+        ).lower()
+        wifi_devices = self.command_output(
+            ["nmcli", "-t", "-f", "TYPE,STATE", "device", "status"]
+        ).lower()
+        wifi_connected = any(
+            row.startswith("wifi:connected")
+            for row in wifi_devices.splitlines()
+        )
+        if wifi_power == "enabled" and wifi_connected:
+            wifi_icon, wifi_tip = "network-wireless-symbolic", "Wi-Fi: Connected"
+        elif wifi_power == "enabled":
+            wifi_icon, wifi_tip = "network-wireless-symbolic", "Wi-Fi: Enabled, not connected"
+        elif wifi_power == "disabled":
+            wifi_icon, wifi_tip = "network-wireless-offline-symbolic", "Wi-Fi: Disabled"
+        else:
+            wifi_icon, wifi_tip = "network-wireless-symbolic", "Wi-Fi status unavailable"
+        self.status_images["wifi"].set_from_icon_name(wifi_icon)
+        self.status_buttons["wifi"].set_tooltip_text(wifi_tip)
+
+        # BlueZ's bluetoothctl reports the adapter's power state.
+        bluetooth = self.command_output(["bluetoothctl", "show"]).lower()
+        if "powered: yes" in bluetooth:
+            bt_icon, bt_tip = "bluetooth-active-symbolic", "Bluetooth: On"
+        elif "powered: no" in bluetooth:
+            bt_icon, bt_tip = "bluetooth-disabled-symbolic", "Bluetooth: Off"
+        else:
+            bt_icon, bt_tip = "bluetooth-active-symbolic", "Bluetooth status unavailable"
+        self.status_images["bluetooth"].set_from_icon_name(bt_icon)
+        self.status_buttons["bluetooth"].set_tooltip_text(bt_tip)
+
+        # PipeWire's PulseAudio compatibility layer exposes mute and volume.
+        mute = self.command_output(
+            ["pactl", "get-sink-mute", "@DEFAULT_SINK@"]
+        ).lower()
+        volume = self.command_output(
+            ["pactl", "get-sink-volume", "@DEFAULT_SINK@"]
+        )
+        match = re.search(r"(\\d+)%", volume)
+        level = int(match.group(1)) if match else None
+        if "yes" in mute:
+            sound_icon, sound_tip = "audio-volume-muted-symbolic", "Sound: Muted"
+        elif level is not None and level < 30:
+            sound_icon, sound_tip = "audio-volume-low-symbolic", f"Sound: {level}%"
+        elif level is not None and level < 70:
+            sound_icon, sound_tip = "audio-volume-medium-symbolic", f"Sound: {level}%"
+        elif level is not None:
+            sound_icon, sound_tip = "audio-volume-high-symbolic", f"Sound: {level}%"
+        else:
+            sound_icon, sound_tip = "audio-volume-high-symbolic", "Sound status unavailable"
+        self.status_images["volume"].set_from_icon_name(sound_icon)
+        self.status_buttons["volume"].set_tooltip_text(sound_tip)
+
+        # Hide the battery indicator on desktops without a battery.
+        devices = self.command_output(["upower", "-e"])
+        battery_path = next(
+            (line for line in devices.splitlines() if "/battery_" in line),
+            None,
+        )
+        battery_image = self.status_images["battery"]
+        battery_button = self.status_buttons["battery"]
+        battery_button.set_visible(bool(battery_path))
+        if battery_path:
+            info = self.command_output(["upower", "-i", battery_path])
+            percentage_match = re.search(r"percentage:\\s*(\\d+)%", info, re.I)
+            state_match = re.search(r"state:\\s*(\\w+)", info, re.I)
+            percentage = int(percentage_match.group(1)) if percentage_match else None
+            state = state_match.group(1).lower() if state_match else "unknown"
+            if percentage is None:
+                battery_icon = "battery-full-symbolic"
+                battery_tip = "Battery status unavailable"
+            else:
+                battery_icon = (
+                    "battery-caution-symbolic" if percentage <= 10 else
+                    "battery-low-symbolic" if percentage <= 25 else
+                    "battery-good-symbolic" if percentage <= 60 else
+                    "battery-full-symbolic"
+                )
+                battery_tip = f"Battery: {percentage}% ({state})"
+            battery_image.set_from_icon_name(battery_icon)
+            battery_button.set_tooltip_text(battery_tip)
+
+        return GLib.SOURCE_CONTINUE
 
     def build_power_popover(self, anchor):
         popover = Gtk.Popover()

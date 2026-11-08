@@ -1,43 +1,64 @@
-# DarkOS &nbsp; [![bluebuild build badge](https://github.com/darkv1221/darkos/actions/workflows/build.yml/badge.svg)](https://github.com/darkv1221/darkos/actions/workflows/build.yml)
+# DarkOS 1.0
 
-See the [BlueBuild docs](https://blue-build.org/how-to/setup/) for quick setup instructions for setting up your own repository based on this template.
+[![BlueBuild](https://github.com/DarkV1221/DarkOS/actions/workflows/build.yml/badge.svg)](https://github.com/DarkV1221/DarkOS/actions/workflows/build.yml)
 
-After setup, it is recommended you update this README to describe your custom image.
+DarkOS is a Fedora Atomic desktop project built on the Universal Blue Silverblue image. Version 1.0 introduces the DarkOS visual desktop shell, DarkShell terminal, and the initial preinstalled application set.
 
-## Installation
+## DarkOS 1.0 desktop
 
-> [!WARNING]  
-> [This is an experimental feature](https://www.fedoraproject.org/wiki/Changes/OstreeNativeContainerStable), try at your own discretion.
+The first shell milestone is a full-screen GTK4 desktop layer that starts automatically in the GNOME session. It uses a fixed **16:9 workspace** and the approved DarkOS layout:
 
-To rebase an existing atomic Fedora installation to the latest build:
+- Dark charcoal surfaces with red accents.
+- Top system bar with connectivity, sound, battery, clock, and power controls.
+- Tabs for DarkShell, Files, Settings, and DarkPlay, plus an Applications page.
+- A TABS sidebar for Files, Settings, and DarkPlay.
+- A bottom dock with the main shell, the requested applications, and system pages.
+- DarkShell embeds VTE and runs a real interactive Bash session.
+- F12 closes the DarkOS shell and returns to the underlying GNOME desktop as a recovery path.
 
-- First rebase to the unsigned image, to get the proper signing keys and policies installed:
-  ```
-  rpm-ostree rebase ostree-unverified-registry:ghcr.io/darkv1221/darkos:latest
-  ```
-- Reboot to complete the rebase:
-  ```
-  systemctl reboot
-  ```
-- Then rebase to the signed image, like so:
-  ```
-  rpm-ostree rebase ostree-image-signed:docker://ghcr.io/darkv1221/darkos:latest
-  ```
-- Reboot again to complete the installation
-  ```
-  systemctl reboot
-  ```
+This is the first desktop implementation, not yet a replacement GNOME Shell or a finished installer ISO. GNOME continues to provide the session, hardware integration, and underlying desktop services.
 
-The `latest` tag will automatically point to the latest build. That build will still always use the Fedora version specified in `recipe.yml`, so you won't get accidentally updated to the next major version.
+## Preinstalled applications
+
+DarkOS configures these Flathub applications for all users:
+
+| Application | Flatpak ID |
+| --- | --- |
+| Firefox | `org.mozilla.firefox` |
+| Steam | `com.valvesoftware.Steam` |
+| Prism Launcher | `org.prismlauncher.PrismLauncher` |
+| Bazzite Bazaar | `io.github.kolunmi.Bazaar` |
+
+The default-Flatpak setup runs during first boot. App launchers show a helpful message if the initial installation is still running.
+
+## DarkShell commands
+
+DarkShell is Bash with a small DarkOS command layer. Bash builtins and normal Linux commands remain available.
+
+| Command | Purpose |
+| --- | --- |
+| `Help` | Show DarkShell custom commands |
+| `Lord` | Run a command with sudo authentication |
+| `find` | Search files and folders |
+| `file` | Create an empty file |
+| `folder` | Create a folder |
+| `delete` | Interactively remove files or folders |
+| `FileInfo` | Print a text file |
+| `Neofetch` | Show system information |
+| `clear` | Clear the terminal |
+
+On Fedora 45, the original Neofetch RPM is not in the Fedora repositories. DarkShell therefore runs Neofetch if it is present, and otherwise displays a built-in DarkOS system summary. Fastfetch is not substituted.
+
+## Building
+
+Every push and pull request runs a Python syntax check, a Bash syntax check, and the BlueBuild image workflow.
+
+The image is signed when the GitHub Actions repository secret `SIGNING_SECRET` contains the Cosign private key matching the repository's `cosign.pub`. Until that secret is configured, CI uses BlueBuild's `--no-sign` option and publishes an **unsigned development image**. Do not treat an unsigned development image as verified. See the [BlueBuild Cosign setup guide](https://blue-build.org/how-to/cosign/) before enabling signed releases.
 
 ## ISO
 
-If build on Fedora Atomic, you can generate an offline ISO with the instructions available [here](https://blue-build.org/how-to/generate-iso/#_top). These ISOs cannot unfortunately be distributed on GitHub for free due to large sizes, so for public projects something else has to be used for hosting.
+An installable ISO has not been generated yet. Once the container image builds successfully, the next release step is to generate and test an ISO using the [BlueBuild ISO guide](https://blue-build.org/how-to/generate-iso/). The ISO should be tested in a virtual machine before anyone installs it on physical hardware.
 
-## Verification
+## Base image
 
-These images are signed with [Sigstore](https://www.sigstore.dev/)'s [cosign](https://github.com/sigstore/cosign). You can verify the signature by downloading the `cosign.pub` file from this repo and running the following command:
-
-```bash
-cosign verify --key cosign.pub ghcr.io/darkv1221/darkos
-```
+DarkOS currently tracks `ghcr.io/ublue-os/silverblue-main:latest`. The base image provides the GNOME session and Atomic update foundation; DarkOS adds the shell and application configuration on top.

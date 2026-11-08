@@ -379,6 +379,7 @@ class DarkOSApplication(Gtk.Application):
                 None,
                 GLib.SpawnFlags.DEFAULT,
                 None,
+                None,
                 -1,
                 None,
                 self.on_terminal_spawned,

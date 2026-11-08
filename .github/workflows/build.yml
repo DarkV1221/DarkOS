@@ -31,7 +31,7 @@ jobs:
 
       - name: Check DarkOS shell files
         run: |
-          python3 -m py_compile files/system/usr/share/darkos-shell/darkos-shell.py
+          python3 -c "import ast, pathlib; ast.parse(pathlib.Path('files/system/usr/share/darkos-shell/darkos-shell.py').read_text())"
           bash -n files/system/usr/share/darkos-shell/darkos.bash
 
       - name: Build Custom Image

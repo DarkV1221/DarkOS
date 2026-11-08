@@ -50,13 +50,137 @@ jobs:
           sha256sum DarkOS-1.0-x86_64.iso > DarkOS-1.0-x86_64.iso.sha256
           cat DarkOS-1.0-x86_64.iso.sha256
 
-      - name: Upload ISO and checksum
+      - name: Split ISO into download-sized pieces
+        shell: bash
+        run: |
+          mkdir -p iso-pieces
+          split --bytes=400000000 --numeric-suffixes=0 --suffix-length=2 \\
+            DarkOS-1.0-x86_64.iso iso-pieces/DarkOS-1.0-x86_64.iso.
+          ls -lh iso-pieces/
+          test "$(find iso-pieces -maxdepth 1 -type f | wc -l)" -eq 13
+
+      - name: Upload ISO piece 00
         uses: actions/upload-artifact@v4
         with:
-          name: DarkOS-1.0-x86_64
-          path: |
-            DarkOS-1.0-x86_64.iso
-            DarkOS-1.0-x86_64.iso.sha256
+          name: DarkOS-1.0-ISO-piece-00
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.00
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-01
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.01
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-02
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.02
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-03
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.03
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-04
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.04
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-05
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.05
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-06
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.06
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 07
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-07
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.07
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 08
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-08
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.08
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 09
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-09
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.09
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 10
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-10
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.10
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 11
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-11
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.11
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO piece 12
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-piece-12
+          path: iso-pieces/DarkOS-1.0-x86_64.iso.12
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload ISO SHA-256 checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-ISO-checksum
+          path: DarkOS-1.0-x86_64.iso.sha256
+          if-no-files-found: error
+          retention-days: 7
           compression-level: 0

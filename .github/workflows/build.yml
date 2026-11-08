@@ -26,6 +26,9 @@ jobs:
         recipe:
           - recipe.yml
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check DarkOS shell files
         run: |
           python3 -m py_compile files/system/usr/share/darkos-shell/darkos-shell.py

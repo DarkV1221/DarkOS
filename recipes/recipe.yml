@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
-name: DarkOS
+name: darkos
 description: DarkOS 1.0 — a Fedora Atomic desktop with the DarkOS full-screen shell.
 
 # Keep the Universal Blue Silverblue base so DarkOS retains its GNOME session,

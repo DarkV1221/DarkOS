@@ -175,12 +175,13 @@ class DarkOSApplication(Gtk.Application):
         desktop.append(self.build_dock())
 
         self.show_tab("DarkShell")
+        self.change_mode("RED")
         self.update_clock()
         GLib.timeout_add_seconds(30, self.update_clock)
 
     def install_css(self):
         provider = Gtk.CssProvider()
-        provider.load_from_data(CSS)
+        provider.load_from_data(CSS.encode("utf-8"))
         display = Gdk.Display.get_default()
         if display:
             Gtk.StyleContext.add_provider_for_display(

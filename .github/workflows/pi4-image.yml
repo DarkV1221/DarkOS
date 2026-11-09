@@ -91,6 +91,17 @@ jobs:
           sudo tar --numeric-owner --same-owner --same-permissions \
             -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
 
+          # Initialize a package keyring inside the chroot. The Arch Linux ARM
+          # rootfs is signature-verified above; trust the matching package signer
+          # only after checking its full fingerprint.
+          SIGNING_KEY="68B3537F39A313B3E574D06777193F152BDBE6A6"
+          export GNUPGHOME="$PWD/work/gnupg"
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$SIGNING_KEY"
+          ACTUAL_FINGERPRINT="$(gpg --batch --with-colons --fingerprint "$SIGNING_KEY" |
+            awk -F: '$1 == "fpr" { print $10; exit }')"
+          test "$ACTUAL_FINGERPRINT" = "$SIGNING_KEY"
+          gpg --batch --export "$SIGNING_KEY" > work/archlinuxarm-build-system.gpg
+
           # Enable ARM64 package installation inside the extracted root filesystem.
           sudo cp --remove-destination /etc/resolv.conf work/root/etc/resolv.conf
           sudo mount --bind /dev work/root/dev
@@ -98,10 +109,15 @@ jobs:
           sudo mount -t proc proc work/root/proc
           sudo mount -t sysfs sysfs work/root/sys
           sudo mount --bind /run work/root/run
+          sudo install -d -m 0700 work/root/etc/pacman.d/gnupg
+          sudo install -D -m 0600 work/archlinuxarm-build-system.gpg work/root/tmp/archlinuxarm-build-system.gpg
+          sudo chroot work/root /usr/bin/pacman-key --init
+          sudo chroot work/root /usr/bin/pacman-key --add /tmp/archlinuxarm-build-system.gpg
+          sudo chroot work/root /usr/bin/pacman-key --lsign-key "$SIGNING_KEY"
 
           # Lightweight graphical stack; no GNOME desktop is installed on the Pi.
           sudo chroot work/root /usr/bin/pacman --disable-sandbox -Syu --noconfirm --needed \
-            adwaita-icon-theme blueman bluez bluez-utils cage fastfetch firefox flatpak foot \
+            adwaita-icon-theme archlinuxarm-keyring blueman bluez bluez-utils cage fastfetch firefox flatpak foot \
             gtk4 lxappearance lxqt-policykit networkmanager nm-connection-editor \
             pavucontrol pipewire pipewire-pulse polkit python-gobject thunar \
             ttf-dejavu upower vte4 wdisplays wireplumber wpa_supplicant

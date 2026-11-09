@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=DarkOS Desktop
+Comment=Start the DarkOS 1.0 desktop shell
+Exec=/usr/bin/python3 /usr/share/darkos-shell/darkos-shell.py
+TryExec=/usr/bin/python3
+Terminal=false
+NoDisplay=true
+OnlyShowIn=GNOME;
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3

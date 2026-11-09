@@ -6,6 +6,8 @@ amd-ucode
 intel-ucode
 archiso
 archinstall
+mkinitcpio
+mkinitcpio-archiso
 networkmanager
 sudo
 git

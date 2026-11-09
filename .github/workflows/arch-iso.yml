@@ -18,28 +18,26 @@ jobs:
   build-arch-iso:
     name: Build DarkOS Arch development ISO
     runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
     steps:
-      - name: Install build tools
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed archiso git python
-
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Check DarkOS shell files
+      - name: Build and validate ISO in a privileged Arch container
         run: |
-          python3 -m py_compile archiso/airootfs/usr/share/darkos-shell/darkos-shell.py
-          bash -n archiso/airootfs/usr/share/darkos-shell/darkos.bash
-          bash -n archiso/airootfs/root/customize_airootfs.sh
-
-      - name: Build ISO with archiso
-        run: |
-          chmod +x archiso/airootfs/root/customize_airootfs.sh
-          mkdir -p out
-          mkarchiso -v -w /tmp/darkos-work -o out archiso
+          docker run --privileged --rm \
+            --volume "${GITHUB_WORKSPACE}:/work" \
+            --workdir /work \
+            archlinux:latest \
+            bash -euo pipefail -c '
+              pacman -Syu --noconfirm
+              pacman -S --noconfirm --needed archiso git python
+              python3 -m py_compile archiso/airootfs/usr/share/darkos-shell/darkos-shell.py
+              bash -n archiso/airootfs/usr/share/darkos-shell/darkos.bash
+              bash -n archiso/airootfs/root/customize_airootfs.sh
+              chmod +x archiso/airootfs/root/customize_airootfs.sh
+              mkdir -p out
+              mkarchiso -v -w /tmp/darkos-work -o /work/out /work/archiso
+            '
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4

@@ -24,7 +24,7 @@ jobs:
       - name: Install build tools
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed archiso git
+          pacman -S --noconfirm --needed archiso git python
 
       - name: Check out repository
         uses: actions/checkout@v4

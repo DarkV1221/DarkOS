@@ -29,6 +29,7 @@ jobs:
 
       - name: Build ISO with archiso
         run: |
+          chmod +x archiso/airootfs/root/customize_airootfs.sh
           mkdir -p out
           mkarchiso -v -w /tmp/darkos-work -o out archiso
 

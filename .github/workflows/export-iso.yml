@@ -39,7 +39,7 @@ jobs:
           cp iso-source/DarkOS-1.0-x86_64.iso.sha256 iso-pieces/
 
       - name: Upload ISO piece 00
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-00
           path: iso-pieces/DarkOS-1.0-x86_64.iso.00
@@ -47,7 +47,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 01
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-01
           path: iso-pieces/DarkOS-1.0-x86_64.iso.01
@@ -55,7 +55,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 02
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-02
           path: iso-pieces/DarkOS-1.0-x86_64.iso.02
@@ -63,7 +63,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 03
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-03
           path: iso-pieces/DarkOS-1.0-x86_64.iso.03
@@ -71,7 +71,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 04
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-04
           path: iso-pieces/DarkOS-1.0-x86_64.iso.04
@@ -79,7 +79,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 05
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-05
           path: iso-pieces/DarkOS-1.0-x86_64.iso.05
@@ -87,7 +87,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 06
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-06
           path: iso-pieces/DarkOS-1.0-x86_64.iso.06
@@ -95,7 +95,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 07
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-07
           path: iso-pieces/DarkOS-1.0-x86_64.iso.07
@@ -103,7 +103,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 08
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-08
           path: iso-pieces/DarkOS-1.0-x86_64.iso.08
@@ -111,7 +111,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 09
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-09
           path: iso-pieces/DarkOS-1.0-x86_64.iso.09
@@ -119,7 +119,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 10
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-10
           path: iso-pieces/DarkOS-1.0-x86_64.iso.10
@@ -127,7 +127,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 11
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-11
           path: iso-pieces/DarkOS-1.0-x86_64.iso.11
@@ -135,7 +135,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Upload ISO piece 12
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-piece-12
           path: iso-pieces/DarkOS-1.0-x86_64.iso.12
@@ -144,7 +144,7 @@ jobs:
           compression-level: 0
 
       - name: Upload SHA-256 checksum
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: DarkOS-1.0-ISO-checksum
           path: iso-pieces/DarkOS-1.0-x86_64.iso.sha256

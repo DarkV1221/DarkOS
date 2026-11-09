@@ -28,14 +28,9 @@ The current shell milestone is a full-screen GTK4 desktop layer that starts auto
 
 ## Included applications
 
-The development image currently includes:
+The current Archiso package list installs Firefox and Fastfetch in the development image.
 
-- Firefox
-- Steam
-- Prism Launcher
-- Fastfetch
-
-The GTK4 shell also contains launch entries for the planned application set. Not every launcher is guaranteed to have its application installed in this early image.
+The GTK4 shell also has launch entries for Steam, Prism Launcher, and Bazaar, but those applications are **not installed automatically yet**. Their packaging and first-boot installation flow still need to be implemented.
 
 ## Building the development ISO
 

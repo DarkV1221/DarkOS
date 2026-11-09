@@ -15,9 +15,9 @@ This is the separate 64-bit ARM edition of DarkOS 1.0 for the Raspberry Pi 4 Mod
 
 ## First boot
 
-The Pi starts the DarkOS desktop automatically under the unprivileged alarm account. The account is automatically signed in on the local display so the Pi can boot straight to the desktop. It is in the wheel group. This is a development image, not a production security policy; change the default Arch Linux ARM credentials before using it on an untrusted network.
+The Pi starts the DarkOS desktop automatically in the existing root account, preserving the current root/root development login instead of creating another user. This is intentionally a development-only setup: change the root password before using it on any network you do not trust, and do not expose this image to untrusted networks.
 
-If the desktop does not start, press Ctrl+Alt+F2 to reach another console and log in with the Arch Linux ARM account credentials. The image remains a development build and has not been physically validated on every Pi 4 display/cable combination.
+If the desktop does not start, press Ctrl+Alt+F2 to reach another console and log in as root with the current development credentials. The image remains a development build and has not been physically validated on every Pi 4 display/cable combination.
 
 ## Build and download
 

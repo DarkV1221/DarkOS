@@ -111,15 +111,11 @@ jobs:
           sudo chmod 0755 work/root/usr/share/darkos-shell/darkos-shell.py
           sudo cp -a raspberry-pi/overlay/. work/root/
           sudo install -d work/root/etc/systemd/system/getty@tty1.service.d
-          sudo install -d work/root/home/alarm
           sudo chroot work/root /usr/bin/bash -euc '
-            id alarm >/dev/null 2>&1 || useradd --create-home --groups wheel,audio,video,input,storage,network --shell /bin/bash alarm
-            usermod -aG wheel,audio,video,input,storage,network alarm
             systemctl enable NetworkManager.service bluetooth.service darkos-zram.service darkos-firstboot-apps.service
             systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service
             systemctl set-default multi-user.target
           '
-          sudo chown -R alarm:alarm work/root/home/alarm
           printf 'darkos-pi4\n' | sudo tee work/root/etc/hostname >/dev/null
 
           BOOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p1")"

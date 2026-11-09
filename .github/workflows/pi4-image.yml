@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            binfmt-support curl dosfstools e2fsprogs gnupg parted qemu-user-static util-linux
+            binfmt-support curl dosfstools e2fsprogs gnupg parted qemu-user qemu-user-binfmt util-linux
           sudo update-binfmts --enable qemu-aarch64 || true
           mkdir -p out work
 
@@ -92,7 +92,7 @@ jobs:
             -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
 
           # Enable ARM64 package installation inside the extracted root filesystem.
-          sudo install -D -m 0755 /usr/bin/qemu-aarch64-static work/root/usr/bin/qemu-aarch64-static
+          sudo cp --remove-destination /etc/resolv.conf work/root/etc/resolv.conf
           sudo mount --bind /dev work/root/dev
           sudo mount --bind /dev/pts work/root/dev/pts
           sudo mount -t proc proc work/root/proc
@@ -101,10 +101,10 @@ jobs:
 
           # Lightweight graphical stack; no GNOME desktop is installed on the Pi.
           sudo chroot work/root /usr/bin/pacman -Syu --noconfirm --needed \
-            adwaita-icon-theme bluez bluez-utils cage fastfetch firefox flatpak foot \
+            adwaita-icon-theme blueman bluez bluez-utils cage fastfetch firefox flatpak foot \
             gtk4 lxappearance lxqt-policykit networkmanager nm-connection-editor \
             pavucontrol pipewire pipewire-pulse polkit python-gobject thunar \
-            ttf-dejavu upower vte4 wdisplays wireplumber
+            ttf-dejavu upower vte4 wdisplays wireplumber wpa_supplicant
 
           sudo install -d work/root/usr/share/darkos-shell
           sudo cp -a files/system/usr/share/darkos-shell/. work/root/usr/share/darkos-shell/

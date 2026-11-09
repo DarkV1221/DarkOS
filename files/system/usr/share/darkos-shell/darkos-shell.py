@@ -379,7 +379,7 @@ class DarkOSApplication(Gtk.Application):
         menu.set_margin_start(8)
         menu.set_margin_end(8)
         for caption, command in [
-            ("Log out", ["gnome-session-quit", "--logout", "--no-prompt"]),
+            ("Log out", ["loginctl", "terminate-user", os.environ.get("USER", "alarm")]),
             ("Restart", ["systemctl", "reboot"]),
             ("Shut down", ["systemctl", "poweroff"]),
         ]:

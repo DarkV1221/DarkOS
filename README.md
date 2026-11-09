@@ -1,28 +1,45 @@
-# DarkOS — Arch Port
+# DarkOS 1.0
 
-DarkOS is being ported from its original Fedora Atomic / BlueBuild foundation to **Arch Linux**.
+DarkOS is an Arch Linux-based desktop project with a terminal-first identity and a custom GTK4 desktop shell.
 
-This work is happening on the `arch-port` branch. The existing `main` branch remains unchanged while the Arch image is developed and tested.
+## Platform
 
-## Direction
-
-- **Base:** Arch Linux (rolling release)
-- **Image builder:** `archiso`
-- **Desktop session:** GNOME, retained initially to host the existing DarkOS GTK4 shell
-- **Primary interface:** DarkShell
-- **Package management:** pacman
+- **Base operating system:** Arch Linux (rolling release)
+- **Package manager:** pacman
+- **Image builder:** archiso
+- **Desktop session:** GNOME, initially retained for session and hardware integration
+- **Primary interface:** DarkShell / the DarkOS GTK4 desktop shell
 - **Planned update client:** DarkUpdate (not implemented yet)
-- **Planned app catalog:** DarkBazzar (not implemented yet)
+- **Planned application catalog:** DarkBazzar (not implemented yet)
 
-## Current development image
+The project no longer uses Fedora Atomic, Silverblue, rpm-ostree, or BlueBuild as its build foundation.
 
-The `archiso/` directory contains an initial x86_64 Archiso profile. It includes the existing DarkShell GTK4 application, GNOME, GDM, NetworkManager, and Arch's `archinstall` installer utility.
+## DarkOS desktop
 
-The GitHub Actions workflow **DarkOS Arch ISO** builds a development ISO and uploads it as an artifact. This is an early development image, not a finished or hardware-validated installer. Test it in a virtual machine first.
+The current shell milestone is a full-screen GTK4 desktop layer that starts automatically in the GNOME session. It uses a fixed **16:9 workspace** and the approved DarkOS layout:
 
-The live session currently creates a temporary `dark` user with passwordless sudo for development convenience. Do not treat this live-image configuration as a secure installed-system account policy. A proper installer and first-boot account setup are still required.
+- Dark charcoal surfaces with red accents.
+- Top system bar with connectivity, sound, clock, and power controls.
+- Tabs for DarkShell, Files, Settings, and DarkPlay, plus an Applications page.
+- A TABS sidebar for Files, Settings, and DarkPlay.
+- A bottom dock with the main shell, requested applications, and system pages.
+- DarkShell embeds VTE and runs a real interactive Bash session.
+- GNOME remains underneath as a development recovery path; this is not yet a replacement GNOME Shell.
 
-## Build locally
+## Included applications
+
+The development image currently includes:
+
+- Firefox
+- Steam
+- Prism Launcher
+- Fastfetch
+
+The GTK4 shell also contains launch entries for the planned application set. Not every launcher is guaranteed to have its application installed in this early image.
+
+## Building the development ISO
+
+The `archiso/` directory contains the x86_64 Archiso profile.
 
 On an Arch Linux build machine:
 
@@ -32,18 +49,29 @@ chmod +x archiso/airootfs/root/customize_airootfs.sh
 sudo mkarchiso -v -w /tmp/darkos-work -o out archiso
 ```
 
-## Migration status
+The GitHub Actions workflow **DarkOS Arch ISO** builds the development ISO and uploads it as an artifact. It runs for relevant pushes to `main` and can also be started manually from GitHub Actions.
 
-- [x] Create a separate Arch port branch
-- [x] Add an initial Archiso profile and package list
-- [x] Add a GitHub Actions ISO build workflow
-- [x] Include the existing DarkShell application in the live image
-- [ ] Run and fix the first CI build
-- [ ] Test boot and GNOME/DarkShell startup in a VM
+## Current development-image limitations
+
+This is an **early Arch-based development ISO**, not a finished, validated installer or a production-ready operating system.
+
+- The image boots a live GNOME session and starts the DarkOS shell.
+- `archinstall` is included as an installer utility, but DarkOS does not yet provide its own tested `archinstall` profile.
+- The live session creates a temporary `dark` user with passwordless sudo for development convenience. This is not a secure installed-system account policy.
+- The installer flow, disk/partition handling, first-boot account setup, recovery, and installed-system configuration still need engineering and testing.
+- DarkUpdate and signed, controlled rolling updates are not implemented yet.
+- The ISO has not yet been validated on physical hardware. Test it in a virtual machine first.
+
+Do not install a development image on a machine containing important data. Installing an operating system can erase data on the selected drive; back up important files and get help from a trusted adult before installing it on real hardware.
+
+## Roadmap
+
+- [x] Move the project build foundation to Arch Linux and archiso
+- [x] Make the Arch ISO workflow the primary build workflow
+- [x] Remove the Fedora Atomic / BlueBuild build configuration from the primary branch
+- [ ] Run and fix the first Arch ISO CI build
+- [ ] Test boot and GNOME/DarkShell startup in a virtual machine
 - [ ] Design a proper installer and installed-system configuration
+- [ ] Create and test a DarkOS `archinstall` profile
 - [ ] Implement signed, controlled rolling updates (DarkUpdate)
-- [ ] Retire the Fedora Atomic / BlueBuild build path after the Arch port is validated
-
-## Important
-
-The Arch port is not yet a replacement for the existing Fedora-based ISO. Do not install this development image on a machine containing important data. The installer, partitioning flow, secure account setup, recovery, and update system still need engineering and testing.
+- [ ] Implement DarkBazzar and its package/repository integration

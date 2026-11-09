@@ -1,0 +1,26 @@
+# DarkOS Arch-based development image
+base
+linux
+linux-firmware
+amd-ucode
+intel-ucode
+archiso
+archinstall
+networkmanager
+sudo
+git
+nano
+bash-completion
+python
+python-gobject
+gtk4
+vte4
+gdm
+gnome-shell
+gnome-session
+gnome-control-center
+nautilus
+gnome-terminal
+starship
+fastfetch
+firefox

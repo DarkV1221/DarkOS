@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ARCHIVE_URL="https://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz"
+          ARCHIVE_URL="http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz"
           curl --fail --location --retry 3 "$ARCHIVE_URL" \
             --output work/archlinuxarm-rpi-aarch64.tar.gz
           curl --fail --location --retry 3 "${ARCHIVE_URL}.sig" \

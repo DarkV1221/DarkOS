@@ -3,10 +3,12 @@ name: DarkOS Arch ISO
 on:
   push:
     branches:
+      - main
       - arch-port
     paths:
       - "archiso/**"
       - ".github/workflows/arch-iso.yml"
+      - "README.md"
   workflow_dispatch:
 
 permissions:
@@ -26,6 +28,12 @@ jobs:
 
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Check DarkOS shell files
+        run: |
+          python3 -m py_compile archiso/airootfs/usr/share/darkos-shell/darkos-shell.py
+          bash -n archiso/airootfs/usr/share/darkos-shell/darkos.bash
+          bash -n archiso/airootfs/root/customize_airootfs.sh
 
       - name: Build ISO with archiso
         run: |

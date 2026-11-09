@@ -11,7 +11,7 @@ DARKOS_MODE_FILE="${XDG_RUNTIME_DIR:-/tmp}/darkos-mode"
 
 Lord() {
     if (( $# == 0 )); then
-        printf 'Usage: Lord <command> [arguments...]\\n'
+        printf 'Usage: Lord <command> [arguments...]\n'
         return 2
     fi
     sudo "$@"
@@ -19,7 +19,7 @@ Lord() {
 
 file() {
     if (( $# == 0 )); then
-        printf 'Usage: file <name> [name...]\\n'
+        printf 'Usage: file <name> [name...]\n'
         return 2
     fi
     command touch -- "$@"
@@ -27,7 +27,7 @@ file() {
 
 folder() {
     if (( $# == 0 )); then
-        printf 'Usage: folder <name> [name...]\\n'
+        printf 'Usage: folder <name> [name...]\n'
         return 2
     fi
     command mkdir -p -- "$@"
@@ -35,26 +35,26 @@ folder() {
 
 delete() {
     if (( $# == 0 )); then
-        printf 'Usage: delete <file-or-folder> [path...]\\n'
+        printf 'Usage: delete <file-or-folder> [path...]\n'
         return 2
     fi
-    printf 'Interactive delete: each item will be confirmed by rm.\\n'
+    printf 'Interactive delete: each item will be confirmed by rm.\n'
     command rm -ri -- "$@"
 }
 
 FileInfo() {
     if (( $# == 0 )); then
-        printf 'Usage: FileInfo <file> [file...]\\n'
+        printf 'Usage: FileInfo <file> [file...]\n'
         return 2
     fi
     local path
     for path in "$@"; do
         if [[ -f "$path" ]]; then
-            printf '\\n--- %s ---\\n' "$path"
+            printf '\n--- %s ---\n' "$path"
             command cat -- "$path"
-            printf '\\n'
+            printf '\n'
         else
-            printf 'FileInfo: not a regular file: %s\\n' "$path" >&2
+            printf 'FileInfo: not a regular file: %s\n' "$path" >&2
         fi
     done
 }
@@ -89,13 +89,13 @@ Neofetch() {
     kernel="$(uname -r)"
     uptime_text="$(uptime -p 2>/dev/null || true)"
     shell_name="${SHELL##*/}"
-    printf '\\033[31m        /\\\\_/\\\\\\\\\\n\\033[0m    \\033[1mDarkOS\\033[0m\\n'
-    printf '\\033[31m       ( o.o )\\033[0m   OS: %s\\n' "$os_name"
-    printf '\\033[31m        > ^ <\\033[0m   Host: %s\\n' "$(hostname)"
-    printf '                  Kernel: %s\\n' "$kernel"
-    printf '                  Shell: %s\\n' "$shell_name"
-    [[ -n "$uptime_text" ]] && printf '                  Uptime: %s\\n' "$uptime_text"
-    printf '                  Desktop: DarkOS 1.0\\n'
+    printf '\033[31m        /\\_/\\\\\n\033[0m    \033[1mDarkOS\033[0m\n'
+    printf '\033[31m       ( o.o )\033[0m   OS: %s\n' "$os_name"
+    printf '\033[31m        > ^ <\033[0m   Host: %s\n' "$(hostname)"
+    printf '                  Kernel: %s\n' "$kernel"
+    printf '                  Shell: %s\n' "$shell_name"
+    [[ -n "$uptime_text" ]] && printf '                  Uptime: %s\n' "$uptime_text"
+    printf '                  Desktop: DarkOS 1.0\n'
 }
 
 _darkos_update_prompt() {
@@ -108,10 +108,10 @@ _darkos_update_prompt() {
         BLUE) color="34" ;;
         *) mode="RED"; color="31" ;;
     esac
-    PS1="\\[\\e[${color}m\\][Dark@DarkOS \\w]$ \\[\\e[0m\\]"
+    PS1="\[\e[${color}m\][Dark@DarkOS \w]$ \[\e[0m\]"
 }
 
 PROMPT_COMMAND="_darkos_update_prompt"
 _darkos_update_prompt
-printf '\\033[31m%s\\033[0m\\n' '//DarkOS-Version-1.0\\\\'
-printf '%s\\n\\n' 'Welcome to DarkOS 1.0. Type Help to see DarkShell commands.'
+printf '\033[31m%s\033[0m\n' '//DarkOS-Version-1.0\\'
+printf '%s\n\n' 'Welcome to DarkOS 1.0. Type Help to see DarkShell commands.'

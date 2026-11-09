@@ -27,13 +27,22 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends             dosfstools e2fsprogs parted util-linux
+          sudo apt-get install --yes --no-install-recommends dosfstools e2fsprogs parted util-linux
           mkdir -p out work
-          curl --fail --location --retry 3             https://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz             --output work/archlinuxarm-rpi-aarch64.tar.gz
+
+          # Use the official Arch Linux ARM GeoIP mirror, not the misconfigured
+          # os.archlinuxarm.org TLS endpoint.
+          curl --fail --location --retry 3 \
+            https://mirror.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz \
+            --output work/archlinuxarm-rpi-aarch64.tar.gz
 
           IMAGE="$PWD/out/DarkOS-Raspberry-Pi-4-aarch64.img"
           truncate --size 8G "$IMAGE"
-          sudo parted --script "$IMAGE"             mklabel msdos             mkpart primary fat32 1MiB 257MiB             set 1 boot on             mkpart primary ext4 257MiB 100%
+          sudo parted --script "$IMAGE" \
+            mklabel msdos \
+            mkpart primary fat32 1MiB 257MiB \
+            set 1 boot on \
+            mkpart primary ext4 257MiB 100%
 
           LOOP="$(sudo losetup --find --show --partscan "$IMAGE")"
           cleanup() {
@@ -43,6 +52,7 @@ jobs:
             sudo losetup -d "$LOOP" 2>/dev/null || true
           }
           trap cleanup EXIT
+
           sudo partprobe "$LOOP"
           for _ in $(seq 1 10); do
             [[ -b "${LOOP}p1" && -b "${LOOP}p2" ]] && break
@@ -56,22 +66,28 @@ jobs:
           mkdir -p work/boot work/root
           sudo mount "${LOOP}p1" work/boot
           sudo mount "${LOOP}p2" work/root
-          sudo tar --numeric-owner --same-owner --same-permissions             -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
+          sudo tar --numeric-owner --same-owner --same-permissions \
+            -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
 
-          # Raspberry Pi firmware files live on the FAT boot partition.
+          # Raspberry Pi firmware and U-Boot files live on the FAT boot partition.
           if [[ -d work/root/boot ]]; then
             sudo cp -a work/root/boot/. work/boot/
             sudo mount --bind work/boot work/root/boot
           fi
 
+          # Apply the separate 2GB Raspberry Pi performance profile.
+          sudo cp -a raspberry-pi/overlay/. work/root/
+          sudo install -d work/root/etc/systemd/system/multi-user.target.wants
+          sudo ln -sfn /usr/lib/systemd/system/NetworkManager.service \
+            work/root/etc/systemd/system/multi-user.target.wants/NetworkManager.service
+          sudo ln -sfn ../darkos-zram.service \
+            work/root/etc/systemd/system/multi-user.target.wants/darkos-zram.service
+
           BOOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p1")"
           ROOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p2")"
-          printf 'UUID=%s  /boot  vfat  defaults  0  2\nUUID=%s  /  ext4  defaults,noatime  0  1\n'             "$BOOT_UUID" "$ROOT_UUID" | sudo tee work/root/etc/fstab
+          printf 'UUID=%s  /boot  vfat  defaults  0  2\nUUID=%s  /  ext4  defaults,noatime  0  1\n' \
+            "$BOOT_UUID" "$ROOT_UUID" | sudo tee work/root/etc/fstab
           echo darkos-pi4 | sudo tee work/root/etc/hostname
-          sudo install -d work/root/etc
-          if [[ -d work/root/etc/systemd/system ]]; then
-            sudo ln -sf /usr/lib/systemd/system/NetworkManager.service               work/root/etc/systemd/system/multi-user.target.wants/NetworkManager.service || true
-          fi
 
           sudo umount work/root/boot 2>/dev/null || true
           sudo umount work/root
@@ -83,7 +99,7 @@ jobs:
       - name: Upload Raspberry Pi 4 image
         uses: actions/upload-artifact@v4
         with:
-          name: DarkOS-Raspberry-Pi-4-aarch64-development
+          name: DarkOS-Raspberry-Pi-4-aarch64-2GB-development
           path: out/*.img.gz
           if-no-files-found: error
           retention-days: 14

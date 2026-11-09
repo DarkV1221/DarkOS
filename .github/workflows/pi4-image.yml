@@ -1,0 +1,90 @@
+name: DarkOS Raspberry Pi 4 Image
+
+on:
+  push:
+    branches:
+      - main
+      - raspberry-pi-4
+    paths:
+      - "raspberry-pi/**"
+      - ".github/workflows/pi4-image.yml"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-pi4-image:
+    name: Build DarkOS Raspberry Pi 4 ARM64 image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Raspberry Pi 4 image from Arch Linux ARM root filesystem
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends             arch-install-scripts dosfstools e2fsprogs parted util-linux
+          mkdir -p out work
+          curl --fail --location --retry 3             https://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz             --output work/archlinuxarm-rpi-aarch64.tar.gz
+
+          IMAGE="$PWD/out/DarkOS-Raspberry-Pi-4-aarch64.img"
+          truncate --size 8G "$IMAGE"
+          sudo parted --script "$IMAGE"             mklabel msdos             mkpart primary fat32 1MiB 257MiB             set 1 boot on             mkpart primary ext4 257MiB 100%
+
+          LOOP="$(sudo losetup --find --show --partscan "$IMAGE")"
+          cleanup() {
+            sudo umount work/root/boot 2>/dev/null || true
+            sudo umount work/root 2>/dev/null || true
+            sudo umount work/boot 2>/dev/null || true
+            sudo losetup -d "$LOOP" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          sudo partprobe "$LOOP"
+          for _ in $(seq 1 10); do
+            [[ -b "${LOOP}p1" && -b "${LOOP}p2" ]] && break
+            sleep 1
+          done
+          test -b "${LOOP}p1"
+          test -b "${LOOP}p2"
+
+          sudo mkfs.vfat -F 32 -n DARKOSBOOT "${LOOP}p1"
+          sudo mkfs.ext4 -F -L DARKOSROOT "${LOOP}p2"
+          mkdir -p work/boot work/root
+          sudo mount "${LOOP}p1" work/boot
+          sudo mount "${LOOP}p2" work/root
+          sudo tar --numeric-owner --same-owner --same-permissions             -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
+
+          # Raspberry Pi firmware files live on the FAT boot partition.
+          if [[ -d work/root/boot ]]; then
+            sudo cp -a work/root/boot/. work/boot/
+            sudo mount --bind work/boot work/root/boot
+          fi
+
+          BOOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p1")"
+          ROOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p2")"
+          printf 'UUID=%s  /boot  vfat  defaults  0  2\nUUID=%s  /  ext4  defaults,noatime  0  1\n'             "$BOOT_UUID" "$ROOT_UUID" | sudo tee work/root/etc/fstab
+          echo darkos-pi4 | sudo tee work/root/etc/hostname
+          sudo install -d work/root/etc
+          if [[ -d work/root/etc/systemd/system ]]; then
+            sudo ln -sf /usr/lib/systemd/system/NetworkManager.service               work/root/etc/systemd/system/multi-user.target.wants/NetworkManager.service || true
+          fi
+
+          sudo umount work/root/boot 2>/dev/null || true
+          sudo umount work/root
+          sudo umount work/boot
+          sudo losetup -d "$LOOP"
+          trap - EXIT
+          gzip --fast "$IMAGE"
+
+      - name: Upload Raspberry Pi 4 image
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-Raspberry-Pi-4-aarch64-development
+          path: out/*.img.gz
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

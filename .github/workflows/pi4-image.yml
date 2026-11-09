@@ -100,7 +100,7 @@ jobs:
           sudo mount --bind /run work/root/run
 
           # Lightweight graphical stack; no GNOME desktop is installed on the Pi.
-          sudo chroot work/root /usr/bin/pacman -Syu --noconfirm --needed \
+          sudo chroot work/root /usr/bin/pacman --disable-sandbox -Syu --noconfirm --needed \
             adwaita-icon-theme blueman bluez bluez-utils cage fastfetch firefox flatpak foot \
             gtk4 lxappearance lxqt-policykit networkmanager nm-connection-editor \
             pavucontrol pipewire pipewire-pulse polkit python-gobject thunar \

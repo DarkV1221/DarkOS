@@ -27,14 +27,28 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends dosfstools e2fsprogs parted util-linux
+          sudo apt-get install --yes --no-install-recommends dosfstools e2fsprogs gnupg parted util-linux
           mkdir -p out work
 
-          # Use the official Arch Linux ARM GeoIP mirror, not the misconfigured
-          # os.archlinuxarm.org TLS endpoint.
-          curl --fail --location --retry 3 \
-            https://mirror.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz \
+          # Arch Linux ARM publishes detached signatures for its root filesystems.
+          # Download the documented Raspberry Pi 3/4 AArch64 tarball and verify it
+          # against the full signing-key fingerprint before extracting anything.
+          ARCHIVE_URL="http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz"
+          curl --fail --location --retry 3 "$ARCHIVE_URL" \
             --output work/archlinuxarm-rpi-aarch64.tar.gz
+          curl --fail --location --retry 3 "${ARCHIVE_URL}.sig" \
+            --output work/archlinuxarm-rpi-aarch64.tar.gz.sig
+
+          SIGNING_KEY="68B3537F39A313B3E574D06777193F152BDBE6A6"
+          GNUPGHOME="$PWD/work/gnupg"
+          export GNUPGHOME
+          install -d -m 700 "$GNUPGHOME"
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$SIGNING_KEY"
+          ACTUAL_FINGERPRINT="$(gpg --batch --with-colons --fingerprint "$SIGNING_KEY" |
+            awk -F: '$1 == "fpr" { print $10; exit }')"
+          test "$ACTUAL_FINGERPRINT" = "$SIGNING_KEY"
+          gpg --batch --verify work/archlinuxarm-rpi-aarch64.tar.gz.sig \
+            work/archlinuxarm-rpi-aarch64.tar.gz
 
           IMAGE="$PWD/out/DarkOS-Raspberry-Pi-4-aarch64.img"
           truncate --size 8G "$IMAGE"

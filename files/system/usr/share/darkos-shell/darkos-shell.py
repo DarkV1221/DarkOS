@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 """DarkOS 1.0 desktop shell.
 
-This first desktop milestone is a full-screen GTK4 shell for the GNOME session.
-It keeps GNOME underneath as a recovery path while presenting the DarkOS UI.
+DarkOS 1.0 full-screen GTK4 shell, running in a lightweight Wayland kiosk session.
 """
 from __future__ import annotations
 
@@ -27,9 +26,7 @@ MODE_FILE = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "darkos-mode
 
 APPS = [
     ("Firefox", "org.mozilla.firefox", "web-browser-symbolic"),
-    ("Steam", "com.valvesoftware.Steam", "applications-games-symbolic"),
-    ("Prism Launcher", "org.prismlauncher.PrismLauncher", "applications-games-symbolic"),
-    ("Bazzite Bazaar", "io.github.kolunmi.Bazaar", "system-software-install-symbolic"),
+    ("Bazzar", "io.github.kolunmi.Bazaar", "system-software-install-symbolic"),
 ]
 
 CSS = """
@@ -382,7 +379,7 @@ class DarkOSApplication(Gtk.Application):
         menu.set_margin_start(8)
         menu.set_margin_end(8)
         for caption, command in [
-            ("Log out", ["gnome-session-quit", "--logout", "--no-prompt"]),
+            ("Log out", ["loginctl", "terminate-user", os.environ.get("USER", "alarm")]),
             ("Restart", ["systemctl", "reboot"]),
             ("Shut down", ["systemctl", "poweroff"]),
         ]:
@@ -651,16 +648,13 @@ class DarkOSApplication(Gtk.Application):
         dock_items = [
             ("DarkShell", "utilities-terminal-symbolic", "tab"),
             ("Firefox", "web-browser-symbolic", "app"),
-            ("Steam", "applications-games-symbolic", "app"),
-            ("Prism", "applications-games-symbolic", "app"),
-            ("Bazaar", "system-software-install-symbolic", "app"),
+            ("Bazzar", "system-software-install-symbolic", "app"),
             ("Files", "folder-symbolic", "tab"),
             ("Settings", "preferences-system-symbolic", "tab"),
             ("DarkPlay", "applications-games-symbolic", "tab"),
         ]
         app_ids = {
-            "Firefox": APPS[0][1], "Steam": APPS[1][1],
-            "Prism": APPS[2][1], "Bazaar": APPS[3][1],
+            "Firefox": APPS[0][1], "Bazzar": APPS[1][1],
         }
         for name, icon, kind in dock_items:
             button = Gtk.Button()
@@ -701,22 +695,25 @@ class DarkOSApplication(Gtk.Application):
         return GLib.SOURCE_CONTINUE
 
     def launch_flatpak(self, app_id):
+        if app_id == "org.mozilla.firefox":
+            self.launch_command(["firefox"])
+            return
         if not shutil.which("flatpak"):
             self.show_message("Flatpak is unavailable", "The Flatpak command is not installed.")
             return
         check = subprocess.run(
-            ["flatpak", "info", app_id],
+            ["flatpak", "info", "--system", app_id],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         if check.returncode != 0:
             self.show_message(
-                "Application is not ready yet",
-                f"{app_id} is not installed for this user yet. First-boot app setup may still be running."
+                "Bazzar is still being installed",
+                "The first-boot setup installs Bazzar from Flathub after the Pi connects to the internet."
             )
             return
         try:
             subprocess.Popen(
-                ["flatpak", "run", app_id],
+                ["flatpak", "run", "--system", app_id],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 start_new_session=True
             )
@@ -724,11 +721,26 @@ class DarkOSApplication(Gtk.Application):
             self.show_message("Could not launch application", str(exc))
 
     def open_control_center(self, panel):
-        self.launch_command(["gnome-control-center", panel])
+        commands = {
+            "display": ["wdisplays"],
+            "wifi": ["nm-connection-editor"],
+            "bluetooth": ["blueman-manager"],
+            "sound": ["pavucontrol"],
+            "background": ["lxappearance"],
+            "about": ["foot", "-e", "fastfetch"],
+        }
+        command = commands.get(panel)
+        if command and shutil.which(command[0]):
+            self.launch_command(command)
+        else:
+            self.show_message(
+                "Setting unavailable",
+                "That control panel is not included in this lightweight Raspberry Pi build."
+            )
 
     def open_path(self, path):
         target = path if path.exists() else pathlib.Path.home()
-        self.launch_command(["nautilus", str(target)])
+        self.launch_command(["thunar", str(target)])
 
     def launch_command(self, command):
         try:
@@ -753,7 +765,7 @@ class DarkOSApplication(Gtk.Application):
 
     def on_key_pressed(self, _controller, keyval, _keycode, _state):
         if keyval == Gdk.KEY_F12:
-            # Recovery path: close the DarkOS overlay and return to GNOME.
+            # Exit the shell and return to the autologin console.
             self.window.unfullscreen()
             self.quit()
             return True

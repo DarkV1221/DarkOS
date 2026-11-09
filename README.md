@@ -14,7 +14,7 @@ DarkOS is an Arch Linux-based desktop project with a terminal-first identity and
 
 The project no longer uses Fedora Atomic, Silverblue, rpm-ostree, or BlueBuild as its build foundation.
 
-## DarkOS desktop
+## Supported platforms\n\n- **PC edition:** x86_64 Archiso ISO, built by the `DarkOS Arch ISO` workflow.\n- **Raspberry Pi 4 edition:** a separate 64-bit ARM (`aarch64`) development image, built by the `DarkOS Raspberry Pi 4 Image` workflow. The Pi image is based on Arch Linux ARM and does not replace or modify the PC ISO.\n\nThe Raspberry Pi 4 image has a dedicated 2GB low-memory profile with zram and bounded logging. It is still an early ARM bring-up base; the lightweight DarkShell session is not integrated yet. See [`raspberry-pi/README.md`](raspberry-pi/README.md) for its status and testing notes.\n\n## DarkOS desktop
 
 The current shell milestone is a full-screen GTK4 desktop layer that starts automatically in the GNOME session. It uses a fixed **16:9 workspace** and the approved DarkOS layout:
 
@@ -46,7 +46,7 @@ sudo mkarchiso -v -w /tmp/darkos-work -o out archiso
 
 The GitHub Actions workflow **DarkOS Arch ISO** builds the development ISO and uploads it as an artifact. It runs for relevant pushes to `main` and can also be started manually from GitHub Actions.
 
-## Current development-image limitations
+## Raspberry Pi 4 image status\n\nThe separate Pi 4 workflow creates a compressed raw ARM64 disk image from the Arch Linux ARM Raspberry Pi root filesystem. The image includes a 2GB memory profile using zram, conservative VM settings, and bounded journaling; it intentionally avoids the PC edition's GNOME stack. DarkShell integration, first-boot account setup, and physical-device validation are still outstanding. Use a spare microSD card and test hardware only.\n\n## Current development-image limitations
 
 This is an **early Arch-based development ISO**, not a finished, validated installer or a production-ready operating system.
 
@@ -69,4 +69,4 @@ Do not install a development image on a machine containing important data. Insta
 - [ ] Design a proper installer and installed-system configuration
 - [ ] Create and test a DarkOS `archinstall` profile
 - [ ] Implement signed, controlled rolling updates (DarkUpdate)
-- [ ] Implement DarkBazzar and its package/repository integration
+- [ ] Implement DarkBazzar and its package/repository integration\n- [ ] Integrate and validate DarkShell on Raspberry Pi 4

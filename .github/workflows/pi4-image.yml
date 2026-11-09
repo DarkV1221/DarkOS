@@ -1,0 +1,145 @@
+name: DarkOS Raspberry Pi 4 Image
+
+on:
+  push:
+    branches:
+      - main
+      - raspberry-pi-4
+    paths:
+      - "raspberry-pi/**"
+      - "files/system/usr/share/darkos-shell/**"
+      - ".github/workflows/pi4-image.yml"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-pi4-image:
+    name: Build DarkOS 1.0 Raspberry Pi 4 ARM64 desktop image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install image and ARM emulation tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            binfmt-support curl dosfstools e2fsprogs gnupg parted qemu-user qemu-user-binfmt util-linux
+          sudo update-binfmts --enable qemu-aarch64 || true
+          mkdir -p out work
+
+      - name: Download and verify Arch Linux ARM Raspberry Pi root filesystem
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE_URL="http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz"
+          curl --fail --location --retry 3 "$ARCHIVE_URL" \
+            --output work/archlinuxarm-rpi-aarch64.tar.gz
+          curl --fail --location --retry 3 "${ARCHIVE_URL}.sig" \
+            --output work/archlinuxarm-rpi-aarch64.tar.gz.sig
+          SIGNING_KEY="68B3537F39A313B3E574D06777193F152BDBE6A6"
+          export GNUPGHOME="$PWD/work/gnupg"
+          install -d -m 700 "$GNUPGHOME"
+          gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$SIGNING_KEY"
+          ACTUAL_FINGERPRINT="$(gpg --batch --with-colons --fingerprint "$SIGNING_KEY" |
+            awk -F: '$1 == "fpr" { print $10; exit }')"
+          test "$ACTUAL_FINGERPRINT" = "$SIGNING_KEY"
+          gpg --batch --verify work/archlinuxarm-rpi-aarch64.tar.gz.sig \
+            work/archlinuxarm-rpi-aarch64.tar.gz
+
+      - name: Create Raspberry Pi 4 disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="$PWD/out/DarkOS-1.0-Raspberry-Pi-4-aarch64.img"
+          truncate --size 12G "$IMAGE"
+          sudo parted --script "$IMAGE" \
+            mklabel msdos \
+            mkpart primary fat32 1MiB 257MiB \
+            set 1 boot on \
+            mkpart primary ext4 257MiB 100%
+
+          LOOP="$(sudo losetup --find --show --partscan "$IMAGE")"
+          cleanup() {
+            sudo umount work/root/dev/pts 2>/dev/null || true
+            sudo umount work/root/dev 2>/dev/null || true
+            sudo umount work/root/proc 2>/dev/null || true
+            sudo umount work/root/sys 2>/dev/null || true
+            sudo umount work/root/run 2>/dev/null || true
+            sudo umount work/root 2>/dev/null || true
+            sudo umount work/boot 2>/dev/null || true
+            sudo losetup -d "$LOOP" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          sudo partprobe "$LOOP"
+          for _ in $(seq 1 15); do
+            [[ -b "${LOOP}p1" && -b "${LOOP}p2" ]] && break
+            sleep 1
+          done
+          test -b "${LOOP}p1"
+          test -b "${LOOP}p2"
+          sudo mkfs.vfat -F 32 -n DARKOSBOOT "${LOOP}p1"
+          sudo mkfs.ext4 -F -L DARKOSROOT "${LOOP}p2"
+          mkdir -p work/boot work/root
+          sudo mount "${LOOP}p1" work/boot
+          sudo mount "${LOOP}p2" work/root
+          sudo tar --numeric-owner --same-owner --same-permissions \
+            -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
+
+          # Enable ARM64 package installation inside the extracted root filesystem.
+          sudo cp --remove-destination /etc/resolv.conf work/root/etc/resolv.conf
+          sudo mount --bind /dev work/root/dev
+          sudo mount --bind /dev/pts work/root/dev/pts
+          sudo mount -t proc proc work/root/proc
+          sudo mount -t sysfs sysfs work/root/sys
+          sudo mount --bind /run work/root/run
+
+          # Lightweight graphical stack; no GNOME desktop is installed on the Pi.
+          sudo chroot work/root /usr/bin/pacman -Syu --noconfirm --needed \
+            adwaita-icon-theme blueman bluez bluez-utils cage fastfetch firefox flatpak foot \
+            gtk4 lxappearance lxqt-policykit networkmanager nm-connection-editor \
+            pavucontrol pipewire pipewire-pulse polkit python-gobject thunar \
+            ttf-dejavu upower vte4 wdisplays wireplumber wpa_supplicant
+
+          sudo install -d work/root/usr/share/darkos-shell
+          sudo cp -a files/system/usr/share/darkos-shell/. work/root/usr/share/darkos-shell/
+          sudo chmod 0755 work/root/usr/share/darkos-shell/darkos-shell.py
+          sudo cp -a raspberry-pi/overlay/. work/root/
+          sudo install -d work/root/etc/systemd/system/getty@tty1.service.d
+          sudo chroot work/root /usr/bin/bash -euc '
+            systemctl enable NetworkManager.service bluetooth.service darkos-zram.service darkos-firstboot-apps.service
+            systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service
+            systemctl set-default multi-user.target
+          '
+          printf 'darkos-pi4\n' | sudo tee work/root/etc/hostname >/dev/null
+
+          BOOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p1")"
+          ROOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p2")"
+          printf 'UUID=%s  /boot  vfat  defaults  0  2\nUUID=%s  /  ext4  defaults,noatime  0  1\n' \
+            "$BOOT_UUID" "$ROOT_UUID" | sudo tee work/root/etc/fstab >/dev/null
+
+          sudo cp -a work/root/boot/. work/boot/
+          sudo umount work/root/dev/pts
+          sudo umount work/root/dev
+          sudo umount work/root/proc
+          sudo umount work/root/sys
+          sudo umount work/root/run
+          sudo umount work/root
+          sudo umount work/boot
+          sudo losetup -d "$LOOP"
+          trap - EXIT
+          gzip --fast "$IMAGE"
+
+      - name: Upload DarkOS 1.0 Raspberry Pi 4 desktop image
+        uses: actions/upload-artifact@v4
+        with:
+          name: DarkOS-1.0-Raspberry-Pi-4-aarch64-4GB-desktop-development
+          path: out/*.img.gz
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

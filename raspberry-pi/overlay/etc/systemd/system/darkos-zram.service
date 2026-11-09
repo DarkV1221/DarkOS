@@ -1,5 +1,5 @@
 [Unit]
-Description=DarkOS compressed-memory swap (zram)
+Description=DarkOS compressed-memory swap (zram) for Raspberry Pi 4 4GB
 DefaultDependencies=no
 After=systemd-modules-load.service
 Before=swap.target
@@ -8,7 +8,7 @@ ConditionPathExists=/usr/bin/zramctl
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -euc 'modprobe zram; zramctl --find --size 768M --algorithm lz4; mkswap -f -L darkos-zram /dev/zram0; swapon --priority 100 /dev/zram0'
+ExecStart=/usr/bin/bash -euc 'modprobe zram; zramctl --find --size 1024M --algorithm lz4; mkswap -f -L darkos-zram /dev/zram0; swapon --priority 100 /dev/zram0'
 ExecStop=/usr/bin/bash -euc 'swapoff /dev/zram0; zramctl --reset /dev/zram0'
 
 [Install]

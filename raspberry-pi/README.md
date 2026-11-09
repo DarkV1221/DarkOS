@@ -1,41 +1,33 @@
-# DarkOS Raspberry Pi 4
+# DarkOS 1.0 Raspberry Pi 4 desktop
 
-This directory contains the Raspberry Pi 4 ARM64 bring-up image and the dedicated 2GB memory profile.
+This is the separate 64-bit ARM edition of DarkOS 1.0 for the Raspberry Pi 4 Model B with 4GB RAM. It does not change the x86_64 PC build.
 
-## Target
+## What the image includes
 
-- Board: Raspberry Pi 4 Model B with 2GB RAM
-- Architecture: AArch64 (64-bit ARM)
-- Base: Arch Linux ARM Raspberry Pi aarch64 root filesystem
-- Image: raw disk image compressed as `.img.gz`
-- Partition layout: FAT32 boot partition plus ext4 root partition
-- Memory goal: stay lean and avoid a full GNOME desktop stack on the Pi
+- Arch Linux ARM (AArch64) base and Raspberry Pi firmware
+- The existing DarkOS 1.0 GTK4 desktop shell, copied into the image at build time
+- Cage, a small Wayland kiosk compositor that launches directly into the full-screen DarkOS shell
+- DarkShell with RED Normal, GREEN Extras, and BLUE WinMode selectors
+- Files, Settings, DarkPlay, application page, and the charcoal/black with red-accent UI
+- Firefox, Thunar, Fastfetch, PipeWire audio, NetworkManager, Bluetooth tools, and lightweight settings utilities
+- Bazzar app-store setup from Flathub on first boot after networking is available
+- A 1GiB zram swap profile and bounded system journal
 
-## 2GB memory profile
+## First boot
 
-The image applies a small set of conservative, low-memory settings:
+The Pi starts the DarkOS desktop automatically under the unprivileged alarm account. The account is automatically signed in on the local display so the Pi can boot straight to the desktop. It is in the wheel group. This is a development image, not a production security policy; change the default Arch Linux ARM credentials before using it on an untrusted network.
 
-- A 768MiB zram swap device using LZ4 compression. This is compressed RAM-backed swap, not a swap file on the microSD card.
-- Higher swappiness so inactive pages can move to compressed zram before the system runs out of memory.
-- Bounded dirty-page writeback to avoid large bursts of cached writes.
-- Bounded system and runtime journal sizes.
-- No GNOME Shell, GDM, or heavyweight desktop bundle is added by this Pi image.
-- NetworkManager is enabled for networking; optional hardware services should be started only when needed.
+If the desktop does not start, press Ctrl+Alt+F2 to reach another console and log in with the Arch Linux ARM account credentials. The image remains a development build and has not been physically validated on every Pi 4 display/cable combination.
 
-The plan is to run the DarkOS interface over a lightweight session instead of copying the PC edition's GNOME session onto a 2GB board. The current image is still an early ARM bring-up base: the DarkShell graphical session and lightweight window manager are **not integrated yet**.
+## Build and download
 
-These settings are a starting profile, not a benchmark claim. Real idle and workload memory use must be measured on the actual Pi 4 before calling the edition fully optimized.
+The DarkOS Raspberry Pi 4 Image workflow builds the compressed raw disk image and uploads an artifact named DarkOS-1.0-Raspberry-Pi-4-aarch64-4GB-desktop-development. Flash the .img.gz image with Raspberry Pi Imager or another trusted image-writing tool.
 
-## Build
+The image is 12GB before compression and requires a microSD card with at least 16GB capacity. Writing an image erases the selected card; verify the target carefully.
 
-Run the **DarkOS Raspberry Pi 4 Image** workflow from GitHub Actions, or push a change under `raspberry-pi/` to the `main` or `raspberry-pi-4` branch. Download the artifact named `DarkOS-Raspberry-Pi-4-aarch64-2GB-development`.
+## Current limitations
 
-## Important development status
-
-This is an initial hardware bring-up image based on the Arch Linux ARM Raspberry Pi root filesystem. It is **not yet the complete DarkOS desktop edition**: DarkShell, the lightweight graphical session, first-boot account setup, and a tested update/recovery flow still need to be integrated.
-
-The image is intended for a spare microSD card and test hardware only. Writing it to a card erases that card. Confirm the target device by model and capacity before writing; never guess a `/dev/sdX` or `/dev/mmcblkX` device name.
-
-The upstream Arch Linux ARM image has its own initial account and credential policy. Before connecting a test Pi to an untrusted network, follow the current Arch Linux ARM Raspberry Pi documentation to change default credentials and complete its recommended first-boot setup.
-
-Do not use this image for important data or as a production system. Test it on a spare Raspberry Pi 4 and spare microSD card.
+- This is an early desktop integration, not a fully validated release.
+- Bazaar installs in the background after the first successful network connection.
+- Steam and Prism Launcher are not included in this ARM build.
+- BLUE WinMode is a UI mode only on the Pi build; Windows executable compatibility is not included.

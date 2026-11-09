@@ -1,0 +1,13 @@
+[Unit]
+Description=Install the DarkOS Bazzar app store from Flathub
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/usr/bin/flatpak
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -euc '/usr/bin/flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo && /usr/bin/flatpak install --system --noninteractive -y flathub io.github.kolunmi.Bazaar'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

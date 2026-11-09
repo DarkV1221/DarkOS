@@ -7,6 +7,7 @@ on:
       - raspberry-pi-4
     paths:
       - "raspberry-pi/**"
+      - "files/system/usr/share/darkos-shell/**"
       - ".github/workflows/pi4-image.yml"
       - "README.md"
   workflow_dispatch:
@@ -16,32 +17,33 @@ permissions:
 
 jobs:
   build-pi4-image:
-    name: Build DarkOS Raspberry Pi 4 ARM64 image
+    name: Build DarkOS 1.0 Raspberry Pi 4 ARM64 desktop image
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build Raspberry Pi 4 image from Arch Linux ARM root filesystem
+      - name: Install image and ARM emulation tools
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends dosfstools e2fsprogs gnupg parted util-linux
+          sudo apt-get install --yes --no-install-recommends \
+            binfmt-support curl dosfstools e2fsprogs gnupg parted qemu-user-static util-linux
+          sudo update-binfmts --enable qemu-aarch64 || true
           mkdir -p out work
 
-          # Arch Linux ARM publishes detached signatures for its root filesystems.
-          # Download the documented Raspberry Pi 3/4 AArch64 tarball and verify it
-          # against the full signing-key fingerprint before extracting anything.
-          ARCHIVE_URL="http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz"
+      - name: Download and verify Arch Linux ARM Raspberry Pi root filesystem
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE_URL="https://os.archlinuxarm.org/os/ArchLinuxARM-rpi-aarch64-latest.tar.gz"
           curl --fail --location --retry 3 "$ARCHIVE_URL" \
             --output work/archlinuxarm-rpi-aarch64.tar.gz
           curl --fail --location --retry 3 "${ARCHIVE_URL}.sig" \
             --output work/archlinuxarm-rpi-aarch64.tar.gz.sig
-
           SIGNING_KEY="68B3537F39A313B3E574D06777193F152BDBE6A6"
-          GNUPGHOME="$PWD/work/gnupg"
-          export GNUPGHOME
+          export GNUPGHOME="$PWD/work/gnupg"
           install -d -m 700 "$GNUPGHOME"
           gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$SIGNING_KEY"
           ACTUAL_FINGERPRINT="$(gpg --batch --with-colons --fingerprint "$SIGNING_KEY" |
@@ -50,8 +52,12 @@ jobs:
           gpg --batch --verify work/archlinuxarm-rpi-aarch64.tar.gz.sig \
             work/archlinuxarm-rpi-aarch64.tar.gz
 
-          IMAGE="$PWD/out/DarkOS-Raspberry-Pi-4-aarch64.img"
-          truncate --size 8G "$IMAGE"
+      - name: Create Raspberry Pi 4 disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="$PWD/out/DarkOS-1.0-Raspberry-Pi-4-aarch64.img"
+          truncate --size 12G "$IMAGE"
           sudo parted --script "$IMAGE" \
             mklabel msdos \
             mkpart primary fat32 1MiB 257MiB \
@@ -60,21 +66,23 @@ jobs:
 
           LOOP="$(sudo losetup --find --show --partscan "$IMAGE")"
           cleanup() {
-            sudo umount work/root/boot 2>/dev/null || true
+            sudo umount work/root/dev/pts 2>/dev/null || true
+            sudo umount work/root/dev 2>/dev/null || true
+            sudo umount work/root/proc 2>/dev/null || true
+            sudo umount work/root/sys 2>/dev/null || true
+            sudo umount work/root/run 2>/dev/null || true
             sudo umount work/root 2>/dev/null || true
             sudo umount work/boot 2>/dev/null || true
             sudo losetup -d "$LOOP" 2>/dev/null || true
           }
           trap cleanup EXIT
-
           sudo partprobe "$LOOP"
-          for _ in $(seq 1 10); do
+          for _ in $(seq 1 15); do
             [[ -b "${LOOP}p1" && -b "${LOOP}p2" ]] && break
             sleep 1
           done
           test -b "${LOOP}p1"
           test -b "${LOOP}p2"
-
           sudo mkfs.vfat -F 32 -n DARKOSBOOT "${LOOP}p1"
           sudo mkfs.ext4 -F -L DARKOSROOT "${LOOP}p2"
           mkdir -p work/boot work/root
@@ -83,37 +91,58 @@ jobs:
           sudo tar --numeric-owner --same-owner --same-permissions \
             -xpf work/archlinuxarm-rpi-aarch64.tar.gz -C work/root
 
-          # Raspberry Pi firmware and U-Boot files live on the FAT boot partition.
-          if [[ -d work/root/boot ]]; then
-            sudo cp -a work/root/boot/. work/boot/
-            sudo mount --bind work/boot work/root/boot
-          fi
+          # Enable ARM64 package installation inside the extracted root filesystem.
+          sudo install -D -m 0755 /usr/bin/qemu-aarch64-static work/root/usr/bin/qemu-aarch64-static
+          sudo mount --bind /dev work/root/dev
+          sudo mount --bind /dev/pts work/root/dev/pts
+          sudo mount -t proc proc work/root/proc
+          sudo mount -t sysfs sysfs work/root/sys
+          sudo mount --bind /run work/root/run
 
-          # Apply the separate 2GB Raspberry Pi performance profile.
+          # Lightweight graphical stack; no GNOME desktop is installed on the Pi.
+          sudo chroot work/root /usr/bin/pacman -Syu --noconfirm --needed \
+            adwaita-icon-theme bluez bluez-utils cage fastfetch firefox flatpak foot \
+            gtk4 lxappearance lxqt-policykit networkmanager nm-connection-editor \
+            pavucontrol pipewire pipewire-pulse polkit python-gobject thunar \
+            ttf-dejavu upower vte4 wdisplays wireplumber
+
+          sudo install -d work/root/usr/share/darkos-shell
+          sudo cp -a files/system/usr/share/darkos-shell/. work/root/usr/share/darkos-shell/
+          sudo chmod 0755 work/root/usr/share/darkos-shell/darkos-shell.py
           sudo cp -a raspberry-pi/overlay/. work/root/
-          sudo install -d work/root/etc/systemd/system/multi-user.target.wants
-          sudo ln -sfn /usr/lib/systemd/system/NetworkManager.service \
-            work/root/etc/systemd/system/multi-user.target.wants/NetworkManager.service
-          sudo ln -sfn ../darkos-zram.service \
-            work/root/etc/systemd/system/multi-user.target.wants/darkos-zram.service
+          sudo install -d work/root/etc/systemd/system/getty@tty1.service.d
+          sudo install -d work/root/home/alarm
+          sudo chroot work/root /usr/bin/bash -euc '
+            id alarm >/dev/null 2>&1 || useradd --create-home --groups wheel,audio,video,input,storage,network --shell /bin/bash alarm
+            usermod -aG wheel,audio,video,input,storage,network alarm
+            systemctl enable NetworkManager.service bluetooth.service darkos-zram.service darkos-firstboot-apps.service
+            systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service
+            systemctl set-default multi-user.target
+          '
+          sudo chown -R alarm:alarm work/root/home/alarm
+          printf 'darkos-pi4\n' | sudo tee work/root/etc/hostname >/dev/null
 
           BOOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p1")"
           ROOT_UUID="$(sudo blkid -s UUID -o value "${LOOP}p2")"
           printf 'UUID=%s  /boot  vfat  defaults  0  2\nUUID=%s  /  ext4  defaults,noatime  0  1\n' \
-            "$BOOT_UUID" "$ROOT_UUID" | sudo tee work/root/etc/fstab
-          echo darkos-pi4 | sudo tee work/root/etc/hostname
+            "$BOOT_UUID" "$ROOT_UUID" | sudo tee work/root/etc/fstab >/dev/null
 
-          sudo umount work/root/boot 2>/dev/null || true
+          sudo cp -a work/root/boot/. work/boot/
+          sudo umount work/root/dev/pts
+          sudo umount work/root/dev
+          sudo umount work/root/proc
+          sudo umount work/root/sys
+          sudo umount work/root/run
           sudo umount work/root
           sudo umount work/boot
           sudo losetup -d "$LOOP"
           trap - EXIT
           gzip --fast "$IMAGE"
 
-      - name: Upload Raspberry Pi 4 image
+      - name: Upload DarkOS 1.0 Raspberry Pi 4 desktop image
         uses: actions/upload-artifact@v4
         with:
-          name: DarkOS-Raspberry-Pi-4-aarch64-2GB-development
+          name: DarkOS-1.0-Raspberry-Pi-4-aarch64-4GB-desktop-development
           path: out/*.img.gz
           if-no-files-found: error
           retention-days: 14

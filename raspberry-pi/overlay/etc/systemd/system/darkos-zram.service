@@ -8,7 +8,7 @@ ConditionPathExists=/usr/bin/zramctl
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -euc 'modprobe zram; zramctl /dev/zram0 --algorithm lz4 --size 768M; mkswap -f -L darkos-zram /dev/zram0; swapon --priority 100 /dev/zram0'
+ExecStart=/usr/bin/bash -euc 'modprobe zram; zramctl --find --size 768M --algorithm lz4; mkswap -f -L darkos-zram /dev/zram0; swapon --priority 100 /dev/zram0'
 ExecStop=/usr/bin/bash -euc 'swapoff /dev/zram0; zramctl --reset /dev/zram0'
 
 [Install]
